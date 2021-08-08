@@ -1,5 +1,9 @@
 {
-  "javascript.format.insertSpaceAfterSemicolonInForStatements": false,
-  "javascript.format.semicolons": "remove",
-  "typescript.format.semicolons": "remove"
+    "javascript.format.insertSpaceAfterSemicolonInForStatements": false,
+    "javascript.format.semicolons": "remove",
+    "typescript.format.semicolons": "remove",
+    "python.formatting.provider": "black",
+    "python.formatting.blackArgs": [
+        "--line-length=120"
+    ]
 }
