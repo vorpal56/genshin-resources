@@ -3,11 +3,8 @@ import Image from 'next/image'
 import styles from '../styles/Home.module.css'
 
 export default function Home() {
-  console.log("something")
+  console.log('something')
   const a = {}
-  return (
-    <div>hello
-
-    </div>
-  )
+  const b = {}
+  return <div>hello</div>
 }

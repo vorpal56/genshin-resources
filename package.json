@@ -6,15 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "pretty-quick --pattern '**/*.(ts|tsx)'",
-    "lint:precommit": "pretty-quick --staged --pattern '**/*.(ts|tsx)'",
+    "prepare": "husky install",
     "pretty-quick": "pretty-quick",
-    "prepare": "husky install"
-  },
-  "husky": {
-    "hooks": {
-      "pre-commit": "pretty-quick --staged"
-    }
+    "lint": "pretty-quick --pattern \"**/*.*(ts|tsx)\"",
+    "lint:precommit": "pretty-quick --staged --pattern \"**/*.*(ts|tsx)\""
   },
   "dependencies": {
     "next": "11.0.1",
