@@ -29,6 +29,8 @@ class Character:
     specialDish: str = ""
 
     def save(self, path: str = None) -> None:
+        if not os.path.exists(CHARACTER_DATA_PATH):
+            os.mkdir(CHARACTER_DATA_PATH)
         file_path = os.path.join(CHARACTER_DATA_PATH, f"{path if path else self.apiname}.json")
         with open(file_path, "w", encoding="utf-8") as f:
             json.dump(self, f, cls=EnhancedJSONEncoder)

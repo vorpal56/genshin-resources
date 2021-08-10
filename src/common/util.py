@@ -5,6 +5,7 @@ import requests
 from enum import Enum
 from dataclasses import is_dataclass, asdict
 from urllib import request
+from typing import Union
 
 
 APP_PATH = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -14,9 +15,12 @@ DATA_PATH = os.path.join(APP_PATH, "data")
 ASSETS_PATH = os.path.join(FRONTEND_PATH, "assets")
 IMAGE_ASSETS_PATH = os.path.join(ASSETS_PATH, "images")
 BASE_GENSHIN_CDN_URL = "https://api.genshin.dev"
+BASE_GENSHIN_WIKI_URL = "https://genshin-impact.fandom.com/wiki"
+
+DataResponseType = Union[str, dict, None]
 
 
-class ResponseTypes(Enum):
+class ResponseFormats(Enum):
     JSON = "json"
     XML = "xml"
     TEXT = "text"
@@ -36,23 +40,121 @@ class Elements(Enum):
         return value in cls._value2member_map_
 
 
+def get_response_data(response, response_format: str) -> DataResponseType:
+    if response.status_code != 200:
+        return  # There was an error in the request
+    if response_format == ResponseFormats.TEXT.value:
+        return response.text
+    if response_format == ResponseFormats.XML.value:
+        return response
+    return response.json()
+
+
 class GenshinCDN:
     @staticmethod
-    def get(path: str, response_type: str = ResponseTypes.JSON.value, **kwargs) -> dict:
+    def get(path: str, response_format: str = ResponseFormats.JSON.value, **kwargs) -> DataResponseType:
         url = f"{BASE_GENSHIN_CDN_URL}{path}"
         response = requests.get(url, **kwargs)
-        if response.status_code != 200:
-            return  # There was an error in the request
-        if response_type == ResponseTypes.TEXT.value:
-            return response.text
-        if response_type == ResponseTypes.XML.value:
-            return response
-        return response.json()
+        return get_response_data(response, response_format)
 
 
-def download_asset(url: str, path: str, **kwargs) -> None:
+class GenshinWiki:
+    TABLE_DATA_IDENTIFIER = ("table", {"class": "wikitable"})
+
+    def extract_item_name():
+        return
+
+    @staticmethod
+    def get(path: str, response_format: str = ResponseFormats.JSON.value, **kwargs) -> DataResponseType:
+        url = f"{BASE_GENSHIN_WIKI_URL}{path}"
+        response = requests.get(url, **kwargs)
+        return get_response_data(response, response_format)
+
+    @staticmethod
+    def get_released_character_ascension_materials() -> dict:
+        character_ascension_materials_page = GenshinWiki.get(
+            path="/Character_Ascension_Materials", response_format=ResponseFormats.TEXT.value
+        )
+        CARD_IMAGE_WHITELIST = ["alt", "data-src", "data-image-key"]
+
+        def get_card_images(col):
+            card_images = []
+            card_image_containers = col.find_all("div", class_="card_image")
+            for card_image_container in card_image_containers:
+                card_image = card_image_container.find(
+                    "img", {whitelist_attr: True for whitelist_attr in CARD_IMAGE_WHITELIST}
+                )
+                # Remove any attributes from the card image that are not allowed
+                for attr in [attr for attr in card_image.attrs if attr not in CARD_IMAGE_WHITELIST]:
+                    del card_image[attr]
+                # There's a child a tag that's a part of the card image container which has the title in the last slug
+                a_tag = card_image_container.find("a", {"href": True})
+                if a_tag:
+                    card_image["title"] = a_tag.attrs["href"].lower().split("/")[-1]
+                card_images.append(card_image)
+            return card_images
+
+        def parse_ascension_gems(cols: list):
+            # This is the ascension gems table with 3 columns, we're only interested in column 2 and 3
+            element_to_gems = {}
+            for i, col in enumerate(cols[1:]):
+                if i == 0:
+                    element_name = col.find("a", {"title": True}).attrs["title"].upper()
+                else:
+                    gem_images = get_card_images(col)
+                    element_to_gems[element_name] = [
+                        image.attrs.get("title") if "title" in image.attrs else image.attrs.get("alt")
+                        for image in gem_images
+                    ]
+            return element_to_gems
+
+        def parse_other_materials(cols: list):
+            # This is for other tables with 2 columns, we're only ones with card_image
+            materials_to_character = {}
+            for i, col in enumerate(cols):
+                if i == 0:
+                    material_name = col.find("a", {"href": True}).attrs["href"].lower().split("/")[-1]
+                else:
+                    material_images = get_card_images(col)
+                    materials_to_character[material_name] = [
+                        image.attrs.get("title") if "title" in image.attrs else image.attrs.get("alt")
+                        for image in material_images
+                    ]
+            return materials_to_character
+
+        from bs4 import BeautifulSoup
+
+        soup = BeautifulSoup(character_ascension_materials_page, "html.parser")
+        # There should only be 3 tables: (1) Ascension materials, (2) Normal boss materials, (3) Local specialties
+        ascension_gems = {}
+        normal_boss_materials = {}
+        local_specialties = {}
+        for i, table in enumerate(soup.find_all(*GenshinWiki.TABLE_DATA_IDENTIFIER)):
+            # Remove all extra tables from the tooltip
+            for div in table.find_all("div", {"class": "tooltip-contents"}):
+                div.decompose()
+            rows = table.find_all("tr")
+            # Skip the header rows for each table
+            for row in rows[1:]:
+                cols = row.find_all("td")
+                if i == 0:  # The first table with Ascension Gems
+                    ascension_gems.update(parse_ascension_gems(cols))
+                elif i == 1:
+                    normal_boss_materials.update(parse_other_materials(cols))
+                else:
+                    local_specialties.update(parse_other_materials(cols))
+        return ascension_gems, normal_boss_materials, local_specialties
+
+    @staticmethod
+    def get_released_weapon_ascension_materials() -> dict:
+        return
+
+
+def download_asset(url: str, file_path: str, file_name: str, **kwargs) -> DataResponseType:
     if "http" in url:
-        with open(path, "wb") as f:
+        if not os.path.exists(file_path):
+            os.mkdir(file_path)
+        with open(os.path.join(file_path, file_name), "wb") as f:
             request_details = request.Request(url, headers={"User-Agent": "Mozilla/5.0"}, **kwargs)
             f.write(request.urlopen(request_details).read())
     return
