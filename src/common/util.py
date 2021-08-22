@@ -6,6 +6,7 @@ from enum import Enum
 from dataclasses import is_dataclass, asdict
 from urllib import request
 from typing import Union
+from abc import ABC, abstractmethod
 
 
 APP_PATH = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -23,7 +24,7 @@ DataResponseType = Union[str, dict, None]
 class ResponseFormats(Enum):
     JSON = "json"
     XML = "xml"
-    TEXT = "text"
+    TEXT = "txt"
 
 
 class Elements(Enum):
@@ -36,42 +37,66 @@ class Elements(Enum):
     DENDRO = "Dendro"
 
     @classmethod
-    def has_value(cls, value: str):
+    def has_value(cls, value: str) -> bool:
         return value in cls._value2member_map_
 
 
-def get_response_data(response, response_format: str) -> DataResponseType:
-    if response.status_code != 200:
-        return  # There was an error in the request
-    if response_format == ResponseFormats.TEXT.value:
-        return response.text
-    if response_format == ResponseFormats.XML.value:
-        return response
-    return response.json()
+class EnhancedJSONEncoder(json.JSONEncoder):
+    def default(self, o):
+        if is_dataclass(o):
+            return asdict(o)
+        return super().default(o)
 
 
-class GenshinCDN:
+class FileProvider:
+    def save(self, base_path: str, path: str, data=None, response_format=ResponseFormats.JSON.value) -> None:
+        if not os.path.exists(base_path):
+            os.mkdir(base_path)
+        extension = response_format
+        file_path = os.path.join(base_path, f"{path}.{extension}")
+        with open(file_path, "w", encoding="utf-8") as f:
+            if extension == ResponseFormats.JSON.value:
+                json.dump(self if not data else data, f, cls=EnhancedJSONEncoder)
+            else:
+                print("Unsupported file extension")
+        return
+
+
+class APIRequest(ABC):
+    @abstractmethod
+    def get():
+        raise NotImplementedError
+
+    @staticmethod
+    def get_response_data(response, response_format: str) -> DataResponseType:
+        if response.status_code != 200:
+            return  # There was an error in the request
+        if response_format == ResponseFormats.TEXT.value:
+            return response.text
+        if response_format == ResponseFormats.XML.value:
+            return response
+        return response.json()
+
+
+class GenshinCDN(APIRequest):
     @staticmethod
     def get(path: str, response_format: str = ResponseFormats.JSON.value, **kwargs) -> DataResponseType:
         url = f"{BASE_GENSHIN_CDN_URL}{path}"
         response = requests.get(url, **kwargs)
-        return get_response_data(response, response_format)
+        return APIRequest.get_response_data(response, response_format)
 
 
-class GenshinWiki:
+class GenshinWiki(APIRequest):
     TABLE_DATA_IDENTIFIER = ("table", {"class": "wikitable"})
-
-    def extract_item_name():
-        return
 
     @staticmethod
     def get(path: str, response_format: str = ResponseFormats.JSON.value, **kwargs) -> DataResponseType:
         url = f"{BASE_GENSHIN_WIKI_URL}{path}"
         response = requests.get(url, **kwargs)
-        return get_response_data(response, response_format)
+        return APIRequest.get_response_data(response, response_format)
 
     @staticmethod
-    def get_released_character_ascension_materials() -> dict:
+    def get_released_character_ascension_materials(**kwargs) -> dict:
         character_ascension_materials_page = GenshinWiki.get(
             path="/Character_Ascension_Materials", response_format=ResponseFormats.TEXT.value
         )
@@ -143,11 +168,23 @@ class GenshinWiki:
                     normal_boss_materials.update(parse_other_materials(cols))
                 else:
                     local_specialties.update(parse_other_materials(cols))
+        if kwargs.get("invert_boss_materials"):
+            normal_boss_materials = (normal_boss_materials, invert_dictionary_list(normal_boss_materials))
+        if kwargs.get("invert_local_specialties"):
+            local_specialties = (local_specialties, invert_dictionary_list(local_specialties))
         return ascension_gems, normal_boss_materials, local_specialties
 
     @staticmethod
     def get_released_weapon_ascension_materials() -> dict:
         return
+
+
+def invert_dictionary_list(mapping: dict) -> dict:
+    inverted_dictionary_list = {}
+    for key, val in mapping.items():
+        for new_key in val:
+            inverted_dictionary_list[new_key] = key
+    return inverted_dictionary_list
 
 
 def download_asset(url: str, file_path: str, file_name: str, **kwargs) -> DataResponseType:
@@ -158,13 +195,6 @@ def download_asset(url: str, file_path: str, file_name: str, **kwargs) -> DataRe
             request_details = request.Request(url, headers={"User-Agent": "Mozilla/5.0"}, **kwargs)
             f.write(request.urlopen(request_details).read())
     return
-
-
-class EnhancedJSONEncoder(json.JSONEncoder):
-    def default(self, o):
-        if is_dataclass(o):
-            return asdict(o)
-        return super().default(o)
 
 
 def remove_ascii_chars(text: str) -> str:
