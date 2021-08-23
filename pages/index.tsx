@@ -1,10 +1,17 @@
-import Head from 'next/head'
-import Image from 'next/image'
-import styles from '../styles/Home.module.css'
+import Head from 'next/head';
+import Image from 'next/image';
+import React from 'react';
+import Layout from '../components/Layout/Layout';
 
 export default function Home() {
-  console.log('something')
-  const a = {}
-  const b = {}
-  return <div>hello</div>
+  return <Example />;
+}
+
+class Example extends React.Component {
+  constructor(props: any) {
+    super(props);
+  }
+  render() {
+    return <Layout>This is from index</Layout>;
+  }
 }

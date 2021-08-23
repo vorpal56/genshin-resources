@@ -12,9 +12,11 @@
     "lint:precommit": "pretty-quick --staged --pattern \"**/*.*(ts|tsx)\""
   },
   "dependencies": {
-    "next": "11.0.1",
+    "next": "^11.1.0",
     "react": "17.0.2",
-    "react-dom": "17.0.2"
+    "react-dom": "17.0.2",
+    "sass": "^1.38.0",
+    "typescript-plugin-css-modules": "^3.4.0"
   },
   "devDependencies": {
     "@types/react": "17.0.16",

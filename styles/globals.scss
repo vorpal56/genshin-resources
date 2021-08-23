@@ -1,0 +1,60 @@
+:root {
+  --main-radius: 5px;
+  --main-padding: 10px;
+  --background-main: #070720;
+  --background: #222238;
+  --background-2: #0b0b23;
+  --background-alt: #17172e;
+  --background-alt-2: #222238;
+  --background-alt-3: #17172e;
+  --border-color-grey: #2c2c40;
+  --border-color-light-grey: #4f4f60;
+  --border-color-blue-grey: rgb(66, 104, 146);
+  --light-yellow: rgb(225, 205, 146);
+  --dark-amber: rgb(154, 123, 67);
+  --off-white: #e0e0e0;
+  --grey: #bdbdbd;
+  --dark-grey: #616161;
+  --medium-blue-grey: #546e7a;
+  --font-family: 'Oxygen', sans-serif !important;
+}
+
+html,
+body {
+  padding: 0;
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Oxygen,
+    Ubuntu, Cantarell, Fira Sans, Droid Sans, Helvetica Neue, sans-serif;
+  color: white;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.container {
+  padding-right: 15px;
+  padding-left: 15px;
+  margin-right: auto;
+  margin-left: auto;
+}
+@media (min-width: 768px) {
+  .container {
+    width: 750px;
+  }
+}
+@media (min-width: 992px) {
+  .container {
+    width: 970px;
+  }
+}
+@media (min-width: 1200px) {
+  .container {
+    width: 1170px;
+  }
+}
